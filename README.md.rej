@@ -1,0 +1,75 @@
+diff a/README.md b/README.md	(rejected hunks)
+@@ -1 +1,72 @@
+-# codex-test
++# DreamHub MVP
++
++DreamHub is a minimal creative generation hub built with Next.js 14, Prisma, Redis + BullMQ, and NextAuth credentials.
++
++## Stack
++
++- Next.js 14 App Router + TypeScript + Tailwind CSS
++- Prisma + PostgreSQL
++- Redis + BullMQ worker (`worker.ts`)
++- NextAuth Credentials (MVP)
++- Mock text/image/video providers
++- n8n trigger/callback endpoints
++
++## Getting Started
++
++1. **Install dependencies**
++
++```bash
++pnpm install
++```
++
++2. **Start infrastructure**
++
++```bash
++docker compose up -d
++```
++
++3. **Configure environment**
++
++```bash
++cp .env.example .env
++```
++
++4. **Run Prisma migrations**
++
++```bash
++pnpm prisma:migrate
++```
++
++5. **Start the app**
++
++```bash
++pnpm dev
++```
++
++6. **Start the worker**
++
++```bash
++pnpm worker
++```
++
++## Key Pages
++
++- `/login` / `/register`
++- `/dashboard`
++- `/projects` / `/projects/[id]`
++- `/generate/text` / `/generate/image` / `/generate/video`
++- `/agent`
++
++## API Endpoints
++
++- `POST /api/auth/register`
++- `POST /api/jobs`
++- `POST /api/mock/text` | `/api/mock/image` | `/api/mock/video`
++- `POST /api/n8n/trigger` | `POST /api/n8n/callback`
++
++## Notes
++
++- The worker listens for BullMQ jobs in the `generation` queue and writes assets back to PostgreSQL.
++- Mock providers are implemented in `src/lib/providers.ts`.
++
++See [docs/n8n.md](docs/n8n.md) for automation details.

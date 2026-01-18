@@ -1,0 +1,1379 @@
+From 766cb9ac364f24a9c74997403a289abc29d3de3a Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sun, 18 Jan 2026 10:33:08 +0000
+Subject: [PATCH] Add DreamHub MVP scaffold
+
+---
+ .env.example                            |  4 ++
+ .eslintrc.json                          |  3 +
+ .gitignore                              |  7 +++
+ README.md                               | 73 ++++++++++++++++++++++++- 
+ docker-compose.yml                      | 20 +++++++
+ docs/n8n.md                             | 41 +++++++++++++++
+ next-env.d.ts                           |  4 ++
+ next.config.mjs                         |  6 ++
+ package.json                            | 42 +++++++++++++++
+ postcss.config.js                       |  6 ++
+ prisma/schema.prisma                    | 63 ++++++++++++++++++++++
+ src/app/agent/page.tsx                  | 18 ++++++
+ src/app/api/auth/[...nextauth]/route.ts |  6 ++
+ src/app/api/auth/register/route.ts      | 28 ++++++++++
+ src/app/api/jobs/route.ts               | 35 ++++++++++++
+ src/app/api/mock/image/route.ts         |  7 +++
+ src/app/api/mock/text/route.ts          |  7 +++
+ src/app/api/mock/video/route.ts         |  7 +++
+ src/app/api/n8n/callback/route.ts       |  6 ++
+ src/app/api/n8n/trigger/route.ts        |  6 ++
+ src/app/api/projects/route.ts           | 24 ++++++++
+ src/app/dashboard/page.tsx              | 40 ++++++++++++++
+ src/app/generate/image/page.tsx         | 12 ++++
+ src/app/generate/text/page.tsx          | 12 ++++
+ src/app/generate/video/page.tsx         | 12 ++++
+ src/app/globals.css                     |  7 +++
+ src/app/layout.tsx                      | 34 ++++++++++++
+ src/app/login/page.tsx                  | 59 ++++++++++++++++++++
+ src/app/page.tsx                        | 22 ++++++++
+ src/app/projects/[id]/page.tsx          | 59 ++++++++++++++++++++
+ src/app/projects/page.tsx               | 37 ++++++++++++
+ src/app/register/page.tsx               | 69 ++++++++++++++++++++++
+ src/components/GenerateForm.tsx         | 71 ++++++++++++++++++++++++
+ src/lib/auth.ts                         | 50 ++++++++++++++++
+ src/lib/prisma.ts                       | 13 +++++
+ src/lib/providers.ts                    | 14 +++++
+ src/lib/queues.ts                       |  6 ++
+ src/lib/redis.ts                        |  3 +
+ src/types/next-auth.d.ts                | 11 ++++
+ tailwind.config.ts                      | 14 +++++
+ tsconfig.json                           | 24 ++++++++
+ worker.ts                               | 53 ++++++++++++++++++
+ 42 files changed, 1034 insertions(+), 1 deletion(-)
+ create mode 100644 .env.example
+ create mode 100644 .eslintrc.json
+ create mode 100644 .gitignore
+ create mode 100644 docker-compose.yml
+ create mode 100644 docs/n8n.md
+ create mode 100644 next-env.d.ts
+ create mode 100644 next.config.mjs
+ create mode 100644 package.json
+ create mode 100644 postcss.config.js
+ create mode 100644 prisma/schema.prisma
+ create mode 100644 src/app/agent/page.tsx
+ create mode 100644 src/app/api/auth/[...nextauth]/route.ts
+ create mode 100644 src/app/api/auth/register/route.ts
+ create mode 100644 src/app/api/jobs/route.ts
+ create mode 100644 src/app/api/mock/image/route.ts
+ create mode 100644 src/app/api/mock/text/route.ts
+ create mode 100644 src/app/api/mock/video/route.ts
+ create mode 100644 src/app/api/n8n/callback/route.ts
+ create mode 100644 src/app/api/n8n/trigger/route.ts
+ create mode 100644 src/app/api/projects/route.ts
+ create mode 100644 src/app/dashboard/page.tsx
+ create mode 100644 src/app/generate/image/page.tsx
+ create mode 100644 src/app/generate/text/page.tsx
+ create mode 100644 src/app/generate/video/page.tsx
+ create mode 100644 src/app/globals.css
+ create mode 100644 src/app/layout.tsx
+ create mode 100644 src/app/login/page.tsx
+ create mode 100644 src/app/page.tsx
+ create mode 100644 src/app/projects/[id]/page.tsx
+ create mode 100644 src/app/projects/page.tsx
+ create mode 100644 src/app/register/page.tsx
+ create mode 100644 src/components/GenerateForm.tsx
+ create mode 100644 src/lib/auth.ts
+ create mode 100644 src/lib/prisma.ts
+ create mode 100644 src/lib/providers.ts
+ create mode 100644 src/lib/queues.ts
+ create mode 100644 src/lib/redis.ts
+ create mode 100644 src/types/next-auth.d.ts
+ create mode 100644 tailwind.config.ts
+ create mode 100644 tsconfig.json
+ create mode 100644 worker.ts
+
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..432160b
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,4 @@
++DATABASE_URL="postgresql://postgres:postgres@localhost:5432/dreamhub"
++NEXTAUTH_SECRET="replace-with-strong-secret"
++NEXTAUTH_URL="http://localhost:3000"
++REDIS_URL="redis://localhost:6379"
+diff --git a/.eslintrc.json b/.eslintrc.json
+new file mode 100644
+index 0000000..bffb357
+--- /dev/null
++++ b/.eslintrc.json
+@@ -0,0 +1,3 @@
++{
++  "extends": "next/core-web-vitals"
++}
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..f6bdebb
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,7 @@
++node_modules
++.next
++.env
++.prisma
++npm-debug.log
++pnpm-debug.log
++.DS_Store
+diff --git a/README.md b/README.md
+index 5d32922..33fbeab 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1,72 @@
+-# codex-test
++# DreamHub MVP
++
++DreamHub is a minimal creative generation hub built with Next.js 14, Prisma, Redis + BullMQ, and NextAuth credentials.
++
++## Stack
++
++- Next.js 14 App Router + TypeScript + Tailwind CSS
++- Prisma + PostgreSQL
++- Redis + BullMQ worker (`worker.ts`)
++- NextAuth Credentials (MVP)
++- Mock text/image/video providers
++- n8n trigger/callback endpoints
++
++## Getting Started
++
++1. **Install dependencies**
++
++```bash
++pnpm install
++```
++
++2. **Start infrastructure**
++
++```bash
++docker compose up -d
++```
++
++3. **Configure environment**
++
++```bash
++cp .env.example .env
++```
++
++4. **Run Prisma migrations**
++
++```bash
++pnpm prisma:migrate
++```
++
++5. **Start the app**
++
++```bash
++pnpm dev
++```
++
++6. **Start the worker**
++
++```bash
++pnpm worker
++```
++
++## Key Pages
++
++- `/login` / `/register`
++- `/dashboard`
++- `/projects` / `/projects/[id]`
++- `/generate/text` / `/generate/image` / `/generate/video`
++- `/agent`
++
++## API Endpoints
++
++- `POST /api/auth/register`
++- `POST /api/jobs`
++- `POST /api/mock/text` | `/api/mock/image` | `/api/mock/video`
++- `POST /api/n8n/trigger` | `POST /api/n8n/callback`
++
++## Notes
++
++- The worker listens for BullMQ jobs in the `generation` queue and writes assets back to PostgreSQL.
++- Mock providers are implemented in `src/lib/providers.ts`.
++
++See [docs/n8n.md](docs/n8n.md) for automation details.
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 0000000..c8574f4
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,20 @@
++version: "3.9"
++services:
++  postgres:
++    image: postgres:15
++    restart: unless-stopped
++    environment:
++      POSTGRES_USER: postgres
++      POSTGRES_PASSWORD: postgres
++      POSTGRES_DB: dreamhub
++    ports:
++      - "5432:5432"
++    volumes:
++      - postgres_data:/var/lib/postgresql/data
++  redis:
++    image: redis:7
++    restart: unless-stopped
++    ports:
++      - "6379:6379"
++volumes:
++  postgres_data:
+diff --git a/docs/n8n.md b/docs/n8n.md
+new file mode 100644
+index 0000000..f7ee549
+--- /dev/null
++++ b/docs/n8n.md
+@@ -0,0 +1,41 @@
++# n8n Integration
++
++DreamHub exposes two endpoints for n8n workflows.
++
++## Trigger Endpoint
++
++`POST /api/n8n/trigger`
++
++Example payload:
++
++```json
++{
++  "event": "job.created",
++  "jobId": "job_123",
++  "prompt": "Generate a neon city skyline"
++}
++```
++
++The API responds with `{ "received": true }` and echoes the payload.
++
++## Callback Endpoint
++
++`POST /api/n8n/callback`
++
++Example payload:
++
++```json
++{
++  "event": "job.completed",
++  "jobId": "job_123",
++  "resultUrl": "https://example.com/result.png"
++}
++```
++
++The API responds with `{ "acknowledged": true }` and echoes the payload.
++
++## Suggested Workflow
++
++1. Use the trigger endpoint in an n8n Webhook node when a job is queued.
++2. Run the workflow (e.g. call external providers).
++3. Send results back to DreamHub with the callback endpoint.
+diff --git a/next-env.d.ts b/next-env.d.ts
+new file mode 100644
+index 0000000..84ab714
+--- /dev/null
++++ b/next-env.d.ts
+@@ -0,0 +1,4 @@
++/// <reference types="next" />
++/// <reference types="next/image-types/global" />
++
++// NOTE: This file should not be edited
+diff --git a/next.config.mjs b/next.config.mjs
+new file mode 100644
+index 0000000..d5456a1
+--- /dev/null
++++ b/next.config.mjs
+@@ -0,0 +1,6 @@
++/** @type {import('next').NextConfig} */
++const nextConfig = {
++  reactStrictMode: true,
++};
++
++export default nextConfig;
+diff --git a/package.json b/package.json
+new file mode 100644
+index 0000000..c9ce952
+--- /dev/null
++++ b/package.json
+@@ -0,0 +1,42 @@
++{
++  "name": "dreamhub",
++  "version": "0.1.0",
++  "private": true,
++  "type": "module",
++  "scripts": {
++    "dev": "next dev",
++    "build": "next build",
++    "start": "next start",
++    "lint": "next lint",
++    "prisma:generate": "prisma generate",
++    "prisma:migrate": "prisma migrate dev",
++    "worker": "tsx worker.ts"
++  },
++  "dependencies": {
++    "@prisma/client": "^5.19.0",
++    "@tanstack/react-query": "^5.52.0",
++    "bcryptjs": "^2.4.3",
++    "bullmq": "^5.12.8",
++    "clsx": "^2.1.1",
++    "ioredis": "^5.4.1",
++    "next": "14.2.5",
++    "next-auth": "^4.24.7",
++    "react": "18.3.1",
++    "react-dom": "18.3.1",
++    "zod": "^3.23.8"
++  },
++  "devDependencies": {
++    "@types/bcryptjs": "^2.4.6",
++    "@types/node": "^20.14.10",
++    "@types/react": "^18.3.3",
++    "@types/react-dom": "^18.3.0",
++    "autoprefixer": "^10.4.19",
++    "eslint": "^8.57.0",
++    "eslint-config-next": "14.2.5",
++    "postcss": "^8.4.39",
++    "prisma": "^5.19.0",
++    "tailwindcss": "^3.4.7",
++    "tsx": "^4.16.2",
++    "typescript": "^5.5.3"
++  }
++}
+diff --git a/postcss.config.js b/postcss.config.js
+new file mode 100644
+index 0000000..12a703d
+--- /dev/null
++++ b/postcss.config.js
+@@ -0,0 +1,6 @@
++module.exports = {
++  plugins: {
++    tailwindcss: {},
++    autoprefixer: {},
++  },
++};
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+new file mode 100644
+index 0000000..9294d11
+--- /dev/null
++++ b/prisma/schema.prisma
+@@ -0,0 +1,63 @@
++generator client {
++  provider = "prisma-client-js"
++}
++
++datasource db {
++  provider = "postgresql"
++  url      = env("DATABASE_URL")
++}
++
++enum JobStatus {
++  QUEUED
++  RUNNING
++  SUCCEEDED
++  FAILED
++}
++
++enum AssetType {
++  TEXT
++  IMAGE
++  VIDEO
++}
++
++model User {
++  id        String    @id @default(cuid())
++  email     String    @unique
++  password  String
++  name      String?
++  createdAt DateTime  @default(now())
++  projects  Project[]
++  jobs      Job[]
++}
++
++model Project {
++  id        String    @id @default(cuid())
++  name      String
++  userId    String
++  user      User      @relation(fields: [userId], references: [id])
++  assets    Asset[]
++  jobs      Job[]
++  createdAt DateTime  @default(now())
++}
++
++model Asset {
++  id        String   @id @default(cuid())
++  type      AssetType
++  content   String
++  projectId String
++  project   Project  @relation(fields: [projectId], references: [id])
++  createdAt DateTime @default(now())
++}
++
++model Job {
++  id        String    @id @default(cuid())
++  type      AssetType
++  status    JobStatus @default(QUEUED)
++  prompt    String
++  result    String?
++  userId    String
++  projectId String?
++  user      User      @relation(fields: [userId], references: [id])
++  project   Project?  @relation(fields: [projectId], references: [id])
++  createdAt DateTime  @default(now())
++}
+diff --git a/src/app/agent/page.tsx b/src/app/agent/page.tsx
+new file mode 100644
+index 0000000..4bbdd19
+--- /dev/null
++++ b/src/app/agent/page.tsx
+@@ -0,0 +1,18 @@
++export default function AgentPage() {
++  return (
++    <div className="space-y-6">
++      <h1 className="text-2xl font-semibold">Agent Console</h1>
++      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
++        <p>
++          Use this space to orchestrate multi-step creative workflows. Wire this page into the
++          n8n trigger endpoints or to watch job events from BullMQ.
++        </p>
++        <ul className="mt-4 list-disc space-y-2 pl-6">
++          <li>Trigger n8n via <code>/api/n8n/trigger</code>.</li>
++          <li>Receive callbacks at <code>/api/n8n/callback</code>.</li>
++          <li>Monitor queued jobs in the worker logs.</li>
++        </ul>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/api/auth/[...nextauth]/route.ts b/src/app/api/auth/[...nextauth]/route.ts
+new file mode 100644
+index 0000000..76af0a9
+--- /dev/null
++++ b/src/app/api/auth/[...nextauth]/route.ts
+@@ -0,0 +1,6 @@
++import NextAuth from 'next-auth';
++import { authOptions } from '@/lib/auth';
++
++const handler = NextAuth(authOptions);
++
++export { handler as GET, handler as POST };
+diff --git a/src/app/api/auth/register/route.ts b/src/app/api/auth/register/route.ts
+new file mode 100644
+index 0000000..d00d415
+--- /dev/null
++++ b/src/app/api/auth/register/route.ts
+@@ -0,0 +1,28 @@
++import { NextResponse } from 'next/server';
++import { prisma } from '@/lib/prisma';
++import bcrypt from 'bcryptjs';
++
++export async function POST(request: Request) {
++  const body = await request.json();
++  const { email, password, name } = body as {
++    email?: string;
++    password?: string;
++    name?: string;
++  };
++
++  if (!email || !password) {
++    return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
++  }
++
++  const existing = await prisma.user.findUnique({ where: { email } });
++  if (existing) {
++    return NextResponse.json({ error: 'User already exists.' }, { status: 409 });
++  }
++
++  const hashed = await bcrypt.hash(password, 10);
++  const user = await prisma.user.create({
++    data: { email, password: hashed, name },
++  });
++
++  return NextResponse.json({ id: user.id, email: user.email });
++}
+diff --git a/src/app/api/jobs/route.ts b/src/app/api/jobs/route.ts
+new file mode 100644
+index 0000000..9255f44
+--- /dev/null
++++ b/src/app/api/jobs/route.ts
+@@ -0,0 +1,35 @@
++import { NextResponse } from 'next/server';
++import { prisma } from '@/lib/prisma';
++import { generationQueue } from '@/lib/queues';
++import type { AssetType } from '@prisma/client';
++
++export async function POST(request: Request) {
++  const body = await request.json();
++  const { prompt, type, userId, projectId } = body as {
++    prompt?: string;
++    type?: AssetType;
++    userId?: string;
++    projectId?: string;
++  };
++
++  if (!prompt || !type || !userId) {
++    return NextResponse.json({ error: 'prompt, type, and userId are required.' }, { status: 400 });
++  }
++
++  const job = await prisma.job.create({
++    data: {
++      prompt,
++      type,
++      userId,
++      projectId,
++    },
++  });
++
++  await generationQueue.add('generate', {
++    jobId: job.id,
++    prompt,
++    type,
++  });
++
++  return NextResponse.json(job, { status: 201 });
++}
+diff --git a/src/app/api/mock/image/route.ts b/src/app/api/mock/image/route.ts
+new file mode 100644
+index 0000000..267b03b
+--- /dev/null
++++ b/src/app/api/mock/image/route.ts
+@@ -0,0 +1,7 @@
++import { NextResponse } from 'next/server';
++
++export async function POST(request: Request) {
++  const { prompt } = (await request.json()) as { prompt?: string };
++  const url = `https://placehold.co/1024x768?text=${encodeURIComponent(prompt ?? 'image')}`;
++  return NextResponse.json({ url });
++}
+diff --git a/src/app/api/mock/text/route.ts b/src/app/api/mock/text/route.ts
+new file mode 100644
+index 0000000..e28f5f4
+--- /dev/null
++++ b/src/app/api/mock/text/route.ts
+@@ -0,0 +1,7 @@
++import { NextResponse } from 'next/server';
++
++export async function POST(request: Request) {
++  const { prompt } = (await request.json()) as { prompt?: string };
++  const content = `Mock text output for: ${prompt ?? 'no prompt'}`;
++  return NextResponse.json({ content });
++}
+diff --git a/src/app/api/mock/video/route.ts b/src/app/api/mock/video/route.ts
+new file mode 100644
+index 0000000..db82f9a
+--- /dev/null
++++ b/src/app/api/mock/video/route.ts
+@@ -0,0 +1,7 @@
++import { NextResponse } from 'next/server';
++
++export async function POST(request: Request) {
++  const { prompt } = (await request.json()) as { prompt?: string };
++  const url = `https://example.com/mock-video/${encodeURIComponent(prompt ?? 'video')}`;
++  return NextResponse.json({ url });
++}
+diff --git a/src/app/api/n8n/callback/route.ts b/src/app/api/n8n/callback/route.ts
+new file mode 100644
+index 0000000..e4d7463
+--- /dev/null
++++ b/src/app/api/n8n/callback/route.ts
+@@ -0,0 +1,6 @@
++import { NextResponse } from 'next/server';
++
++export async function POST(request: Request) {
++  const payload = await request.json();
++  return NextResponse.json({ acknowledged: true, payload });
++}
+diff --git a/src/app/api/n8n/trigger/route.ts b/src/app/api/n8n/trigger/route.ts
+new file mode 100644
+index 0000000..3e7a043
+--- /dev/null
++++ b/src/app/api/n8n/trigger/route.ts
+@@ -0,0 +1,6 @@
++import { NextResponse } from 'next/server';
++
++export async function POST(request: Request) {
++  const payload = await request.json();
++  return NextResponse.json({ received: true, payload });
++}
+diff --git a/src/app/api/projects/route.ts b/src/app/api/projects/route.ts
+new file mode 100644
+index 0000000..52dfd8b
+--- /dev/null
++++ b/src/app/api/projects/route.ts
+@@ -0,0 +1,24 @@
++import { NextResponse } from 'next/server';
++import { prisma } from '@/lib/prisma';
++
++export async function GET() {
++  const projects = await prisma.project.findMany({
++    orderBy: { createdAt: 'desc' },
++  });
++  return NextResponse.json(projects);
++}
++
++export async function POST(request: Request) {
++  const body = await request.json();
++  const { name, userId } = body as { name?: string; userId?: string };
++
++  if (!name || !userId) {
++    return NextResponse.json({ error: 'name and userId are required.' }, { status: 400 });
++  }
++
++  const project = await prisma.project.create({
++    data: { name, userId },
++  });
++
++  return NextResponse.json(project, { status: 201 });
++}
+diff --git a/src/app/dashboard/page.tsx b/src/app/dashboard/page.tsx
+new file mode 100644
+index 0000000..e3a9a09
+--- /dev/null
++++ b/src/app/dashboard/page.tsx
+@@ -0,0 +1,40 @@
++import { prisma } from '@/lib/prisma';
++
++export default async function DashboardPage() {
++  const projectCount = await prisma.project.count();
++  const jobCount = await prisma.job.count();
++  const recentJobs = await prisma.job.findMany({
++    orderBy: { createdAt: 'desc' },
++    take: 5,
++  });
++
++  return (
++    <div className="space-y-8">
++      <div className="grid gap-4 md:grid-cols-2">
++        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++          <p className="text-sm text-slate-400">Projects</p>
++          <p className="mt-2 text-3xl font-semibold">{projectCount}</p>
++        </div>
++        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++          <p className="text-sm text-slate-400">Jobs queued</p>
++          <p className="mt-2 text-3xl font-semibold">{jobCount}</p>
++        </div>
++      </div>
++      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++        <h2 className="text-xl font-semibold">Recent Jobs</h2>
++        <ul className="mt-4 space-y-2 text-sm text-slate-300">
++          {recentJobs.length === 0 ? (
++            <li>No jobs yet.</li>
++          ) : (
++            recentJobs.map((job) => (
++              <li key={job.id} className="flex justify-between border-b border-slate-800 py-2">
++                <span>{job.type}</span>
++                <span className="text-slate-500">{job.status}</span>
++              </li>
++            ))
++          )}
++        </ul>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/generate/image/page.tsx b/src/app/generate/image/page.tsx
+new file mode 100644
+index 0000000..83cf71f
+--- /dev/null
++++ b/src/app/generate/image/page.tsx
+@@ -0,0 +1,12 @@
++import GenerateForm from '@/components/GenerateForm';
++
++export default function GenerateImagePage() {
++  return (
++    <div className="space-y-6">
++      <h1 className="text-2xl font-semibold">Generate Image</h1>
++      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++        <GenerateForm type="IMAGE" />
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/generate/text/page.tsx b/src/app/generate/text/page.tsx
+new file mode 100644
+index 0000000..b0dd72a
+--- /dev/null
++++ b/src/app/generate/text/page.tsx
+@@ -0,0 +1,12 @@
++import GenerateForm from '@/components/GenerateForm';
++
++export default function GenerateTextPage() {
++  return (
++    <div className="space-y-6">
++      <h1 className="text-2xl font-semibold">Generate Text</h1>
++      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++        <GenerateForm type="TEXT" />
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/generate/video/page.tsx b/src/app/generate/video/page.tsx
+new file mode 100644
+index 0000000..1852545
+--- /dev/null
++++ b/src/app/generate/video/page.tsx
+@@ -0,0 +1,12 @@
++import GenerateForm from '@/components/GenerateForm';
++
++export default function GenerateVideoPage() {
++  return (
++    <div className="space-y-6">
++      <h1 className="text-2xl font-semibold">Generate Video</h1>
++      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++        <GenerateForm type="VIDEO" />
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/globals.css b/src/app/globals.css
+new file mode 100644
+index 0000000..d9e1f62
+--- /dev/null
++++ b/src/app/globals.css
+@@ -0,0 +1,7 @@
++@tailwind base;
++@tailwind components;
++@tailwind utilities;
++
++body {
++  @apply bg-slate-950 text-slate-100;
++}
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+new file mode 100644
+index 0000000..a29dabc
+--- /dev/null
++++ b/src/app/layout.tsx
+@@ -0,0 +1,34 @@
++import './globals.css';
++import type { Metadata } from 'next';
++import Link from 'next/link';
++
++export const metadata: Metadata = {
++  title: 'DreamHub MVP',
++  description: 'DreamHub MVP with Next.js, Prisma, Redis, and BullMQ',
++};
++
++export default function RootLayout({ children }: { children: React.ReactNode }) {
++  return (
++    <html lang="en">
++      <body>
++        <div className="min-h-screen">
++          <header className="border-b border-slate-800 bg-slate-900">
++            <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
++              <Link className="text-lg font-semibold" href="/">
++                DreamHub
++              </Link>
++              <nav className="flex gap-4 text-sm text-slate-300">
++                <Link href="/dashboard">Dashboard</Link>
++                <Link href="/projects">Projects</Link>
++                <Link href="/generate/text">Generate</Link>
++                <Link href="/agent">Agent</Link>
++                <Link href="/login">Login</Link>
++              </nav>
++            </div>
++          </header>
++          <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
++        </div>
++      </body>
++    </html>
++  );
++}
+diff --git a/src/app/login/page.tsx b/src/app/login/page.tsx
+new file mode 100644
+index 0000000..1c1fdb4
+--- /dev/null
++++ b/src/app/login/page.tsx
+@@ -0,0 +1,59 @@
++'use client';
++
++import { useState } from 'react';
++import { signIn } from 'next-auth/react';
++
++export default function LoginPage() {
++  const [email, setEmail] = useState('');
++  const [password, setPassword] = useState('');
++  const [error, setError] = useState('');
++
++  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    setError('');
++
++    const result = await signIn('credentials', {
++      email,
++      password,
++      redirect: false,
++    });
++
++    if (result?.error) {
++      setError('Invalid credentials.');
++    } else {
++      window.location.href = '/dashboard';
++    }
++  }
++
++  return (
++    <div className="mx-auto max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8">
++      <h1 className="text-2xl font-semibold">Login</h1>
++      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
++        <label className="block text-sm">
++          Email
++          <input
++            className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
++            type="email"
++            value={email}
++            onChange={(event) => setEmail(event.target.value)}
++            required
++          />
++        </label>
++        <label className="block text-sm">
++          Password
++          <input
++            className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
++            type="password"
++            value={password}
++            onChange={(event) => setPassword(event.target.value)}
++            required
++          />
++        </label>
++        {error ? <p className="text-sm text-rose-400">{error}</p> : null}
++        <button className="w-full rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold" type="submit">
++          Sign in
++        </button>
++      </form>
++    </div>
++  );
++}
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+new file mode 100644
+index 0000000..21ba8a6
+--- /dev/null
++++ b/src/app/page.tsx
+@@ -0,0 +1,22 @@
++import Link from 'next/link';
++
++export default function HomePage() {
++  return (
++    <section className="space-y-6">
++      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
++        <h1 className="text-3xl font-semibold">DreamHub MVP</h1>
++        <p className="mt-2 text-slate-300">
++          A starter for creative generation workflows with projects, jobs, and mock providers.
++        </p>
++        <div className="mt-6 flex flex-wrap gap-3">
++          <Link className="rounded-full bg-indigo-500 px-4 py-2 text-sm font-medium text-white" href="/register">
++            Create account
++          </Link>
++          <Link className="rounded-full border border-slate-700 px-4 py-2 text-sm" href="/projects">
++            View projects
++          </Link>
++        </div>
++      </div>
++    </section>
++  );
++}
+diff --git a/src/app/projects/[id]/page.tsx b/src/app/projects/[id]/page.tsx
+new file mode 100644
+index 0000000..1a2f841
+--- /dev/null
++++ b/src/app/projects/[id]/page.tsx
+@@ -0,0 +1,59 @@
++import { notFound } from 'next/navigation';
++import { prisma } from '@/lib/prisma';
++
++interface ProjectPageProps {
++  params: { id: string };
++}
++
++export default async function ProjectPage({ params }: ProjectPageProps) {
++  const project = await prisma.project.findUnique({
++    where: { id: params.id },
++    include: { assets: true, jobs: true },
++  });
++
++  if (!project) {
++    notFound();
++  }
++
++  return (
++    <div className="space-y-6">
++      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++        <h1 className="text-2xl font-semibold">{project.name}</h1>
++        <p className="mt-2 text-sm text-slate-400">Assets: {project.assets.length}</p>
++      </div>
++      <div className="grid gap-6 md:grid-cols-2">
++        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++          <h2 className="text-lg font-semibold">Assets</h2>
++          <ul className="mt-4 space-y-2 text-sm text-slate-300">
++            {project.assets.length === 0 ? (
++              <li>No assets yet.</li>
++            ) : (
++              project.assets.map((asset) => (
++                <li key={asset.id} className="border-b border-slate-800 py-2">
++                  <p className="text-slate-400">{asset.type}</p>
++                  <p className="mt-1 break-all">{asset.content}</p>
++                </li>
++              ))
++            )}
++          </ul>
++        </div>
++        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
++          <h2 className="text-lg font-semibold">Jobs</h2>
++          <ul className="mt-4 space-y-2 text-sm text-slate-300">
++            {project.jobs.length === 0 ? (
++              <li>No jobs yet.</li>
++            ) : (
++              project.jobs.map((job) => (
++                <li key={job.id} className="border-b border-slate-800 py-2">
++                  <p className="text-slate-400">{job.type}</p>
++                  <p className="mt-1">{job.prompt}</p>
++                  <p className="text-xs text-slate-500">{job.status}</p>
++                </li>
++              ))
++            )}
++          </ul>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/projects/page.tsx b/src/app/projects/page.tsx
+new file mode 100644
+index 0000000..cb0bb74
+--- /dev/null
++++ b/src/app/projects/page.tsx
+@@ -0,0 +1,37 @@
++import Link from 'next/link';
++import { prisma } from '@/lib/prisma';
++
++export default async function ProjectsPage() {
++  const projects = await prisma.project.findMany({
++    orderBy: { createdAt: 'desc' },
++  });
++
++  return (
++    <div className="space-y-6">
++      <div className="flex items-center justify-between">
++        <h1 className="text-2xl font-semibold">Projects</h1>
++        <Link className="rounded-full border border-slate-700 px-4 py-2 text-sm" href="/generate/text">
++          New Generation
++        </Link>
++      </div>
++      <div className="grid gap-4 md:grid-cols-2">
++        {projects.length === 0 ? (
++          <div className="rounded-2xl border border-dashed border-slate-800 p-6 text-slate-400">
++            No projects yet. Create one from the generation pages.
++          </div>
++        ) : (
++          projects.map((project) => (
++            <Link
++              key={project.id}
++              href={`/projects/${project.id}`}
++              className="rounded-2xl border border-slate-800 bg-slate-900 p-6"
++            >
++              <h2 className="text-lg font-semibold">{project.name}</h2>
++              <p className="mt-2 text-sm text-slate-400">Created {project.createdAt.toDateString()}</p>
++            </Link>
++          ))
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/register/page.tsx b/src/app/register/page.tsx
+new file mode 100644
+index 0000000..2c2a0b2
+--- /dev/null
++++ b/src/app/register/page.tsx
+@@ -0,0 +1,69 @@
++'use client';
++
++import { useState } from 'react';
++
++export default function RegisterPage() {
++  const [name, setName] = useState('');
++  const [email, setEmail] = useState('');
++  const [password, setPassword] = useState('');
++  const [message, setMessage] = useState('');
++
++  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    setMessage('');
++
++    const response = await fetch('/api/auth/register', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ name, email, password }),
++    });
++
++    if (!response.ok) {
++      const data = await response.json();
++      setMessage(data.error ?? 'Registration failed.');
++      return;
++    }
++
++    setMessage('Account created. Please log in.');
++  }
++
++  return (
++    <div className="mx-auto max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8">
++      <h1 className="text-2xl font-semibold">Register</h1>
++      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
++        <label className="block text-sm">
++          Name
++          <input
++            className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
++            value={name}
++            onChange={(event) => setName(event.target.value)}
++          />
++        </label>
++        <label className="block text-sm">
++          Email
++          <input
++            className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
++            type="email"
++            value={email}
++            onChange={(event) => setEmail(event.target.value)}
++            required
++          />
++        </label>
++        <label className="block text-sm">
++          Password
++          <input
++            className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
++            type="password"
++            value={password}
++            onChange={(event) => setPassword(event.target.value)}
++            required
++          />
++        </label>
++        {message ? <p className="text-sm text-emerald-400">{message}</p> : null}
++        <button className="w-full rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold" type="submit">
++          Create account
++        </button>
++      </form>
++    </div>
++  );
++}
+diff --git a/src/components/GenerateForm.tsx b/src/components/GenerateForm.tsx
+new file mode 100644
+index 0000000..3a34068
+--- /dev/null
++++ b/src/components/GenerateForm.tsx
+@@ -0,0 +1,71 @@
++'use client';
++
++import { useState } from 'react';
++import type { AssetType } from '@prisma/client';
++
++interface GenerateFormProps {
++  type: AssetType;
++}
++
++export default function GenerateForm({ type }: GenerateFormProps) {
++  const [prompt, setPrompt] = useState('');
++  const [userId, setUserId] = useState('');
++  const [projectId, setProjectId] = useState('');
++  const [message, setMessage] = useState('');
++
++  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    setMessage('');
++
++    const response = await fetch('/api/jobs', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ prompt, type, userId, projectId: projectId || undefined }),
++    });
++
++    if (!response.ok) {
++      const data = await response.json();
++      setMessage(data.error ?? 'Failed to queue job.');
++      return;
++    }
++
++    setPrompt('');
++    setMessage('Job queued successfully.');
++  }
++
++  return (
++    <form className="space-y-4" onSubmit={handleSubmit}>
++      <label className="block text-sm">
++        Prompt
++        <textarea
++          className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
++          rows={4}
++          value={prompt}
++          onChange={(event) => setPrompt(event.target.value)}
++          required
++        />
++      </label>
++      <label className="block text-sm">
++        User ID
++        <input
++          className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
++          value={userId}
++          onChange={(event) => setUserId(event.target.value)}
++          required
++        />
++      </label>
++      <label className="block text-sm">
++        Project ID (optional)
++        <input
++          className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
++          value={projectId}
++          onChange={(event) => setProjectId(event.target.value)}
++        />
++      </label>
++      {message ? <p className="text-sm text-emerald-400">{message}</p> : null}
++      <button className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold" type="submit">
++        Queue {type.toLowerCase()} job
++      </button>
++    </form>
++  );
++}
+diff --git a/src/lib/auth.ts b/src/lib/auth.ts
+new file mode 100644
+index 0000000..32939d6
+--- /dev/null
++++ b/src/lib/auth.ts
+@@ -0,0 +1,50 @@
++import type { NextAuthOptions } from 'next-auth';
++import CredentialsProvider from 'next-auth/providers/credentials';
++import { prisma } from '@/lib/prisma';
++import bcrypt from 'bcryptjs';
++
++export const authOptions: NextAuthOptions = {
++  session: {
++    strategy: 'jwt',
++  },
++  providers: [
++    CredentialsProvider({
++      name: 'Credentials',
++      credentials: {
++        email: { label: 'Email', type: 'email' },
++        password: { label: 'Password', type: 'password' },
++      },
++      async authorize(credentials) {
++        if (!credentials?.email || !credentials.password) {
++          return null;
++        }
++
++        const user = await prisma.user.findUnique({
++          where: { email: credentials.email },
++        });
++
++        if (!user) {
++          return null;
++        }
++
++        const isValid = await bcrypt.compare(credentials.password, user.password);
++        if (!isValid) {
++          return null;
++        }
++
++        return { id: user.id, email: user.email, name: user.name ?? undefined };
++      },
++    }),
++  ],
++  pages: {
++    signIn: '/login',
++  },
++  callbacks: {
++    async session({ session, token }) {
++      if (token.sub && session.user) {
++        session.user.id = token.sub;
++      }
++      return session;
++    },
++  },
++};
+diff --git a/src/lib/prisma.ts b/src/lib/prisma.ts
+new file mode 100644
+index 0000000..7bf87ec
+--- /dev/null
++++ b/src/lib/prisma.ts
+@@ -0,0 +1,13 @@
++import { PrismaClient } from '@prisma/client';
++
++const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
++
++export const prisma =
++  globalForPrisma.prisma ??
++  new PrismaClient({
++    log: ['error', 'warn'],
++  });
++
++if (process.env.NODE_ENV !== 'production') {
++  globalForPrisma.prisma = prisma;
++}
+diff --git a/src/lib/providers.ts b/src/lib/providers.ts
+new file mode 100644
+index 0000000..be54e69
+--- /dev/null
++++ b/src/lib/providers.ts
+@@ -0,0 +1,14 @@
++import type { AssetType } from '@prisma/client';
++
++export async function runMockProvider(type: AssetType, prompt: string) {
++  switch (type) {
++    case 'TEXT':
++      return `Mock text generation for: ${prompt}`;
++    case 'IMAGE':
++      return `https://placehold.co/600x400?text=${encodeURIComponent(prompt)}`;
++    case 'VIDEO':
++      return `https://example.com/mock-video/${encodeURIComponent(prompt)}`;
++    default:
++      return `Mock output for: ${prompt}`;
++  }
++}
+diff --git a/src/lib/queues.ts b/src/lib/queues.ts
+new file mode 100644
+index 0000000..5e332eb
+--- /dev/null
++++ b/src/lib/queues.ts
+@@ -0,0 +1,6 @@
++import { Queue } from 'bullmq';
++import { redis } from '@/lib/redis';
++
++export const generationQueue = new Queue('generation', {
++  connection: redis,
++});
+diff --git a/src/lib/redis.ts b/src/lib/redis.ts
+new file mode 100644
+index 0000000..3a9a701
+--- /dev/null
++++ b/src/lib/redis.ts
+@@ -0,0 +1,3 @@
++import IORedis from 'ioredis';
++
++export const redis = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+diff --git a/src/types/next-auth.d.ts b/src/types/next-auth.d.ts
+new file mode 100644
+index 0000000..8ac995c
+--- /dev/null
++++ b/src/types/next-auth.d.ts
+@@ -0,0 +1,11 @@
++import NextAuth from 'next-auth';
++
++declare module 'next-auth' {
++  interface Session {
++    user: {
++      id: string;
++      name?: string | null;
++      email?: string | null;
++    };
++  }
++}
+diff --git a/tailwind.config.ts b/tailwind.config.ts
+new file mode 100644
+index 0000000..f7be58a
+--- /dev/null
++++ b/tailwind.config.ts
+@@ -0,0 +1,14 @@
++import type { Config } from 'tailwindcss';
++
++const config: Config = {
++  content: [
++    './src/app/**/*.{ts,tsx}',
++    './src/components/**/*.{ts,tsx}',
++  ],
++  theme: {
++    extend: {},
++  },
++  plugins: [],
++};
++
++export default config;
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..db7bd13
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,24 @@
++{
++  "compilerOptions": {
++    "target": "ES2020",
++    "lib": ["dom", "dom.iterable", "esnext"],
++    "allowJs": false,
++    "skipLibCheck": true,
++    "strict": true,
++    "noEmit": true,
++    "esModuleInterop": true,
++    "module": "esnext",
++    "moduleResolution": "bundler",
++    "resolveJsonModule": true,
++    "isolatedModules": true,
++    "jsx": "preserve",
++    "incremental": true,
++    "plugins": [{ "name": "next" }],
++    "baseUrl": ".",
++    "paths": {
++      "@/*": ["src/*"]
++    }
++  },
++  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
++  "exclude": ["node_modules"]
++}
+diff --git a/worker.ts b/worker.ts
+new file mode 100644
+index 0000000..2197daf
+--- /dev/null
++++ b/worker.ts
+@@ -0,0 +1,53 @@
++import { Worker } from 'bullmq';
++import { prisma } from './src/lib/prisma.js';
++import { redis } from './src/lib/redis.js';
++import { runMockProvider } from './src/lib/providers.js';
++import type { AssetType } from '@prisma/client';
++
++const worker = new Worker(
++  'generation',
++  async (job) => {
++    const { jobId, prompt, type } = job.data as {
++      jobId: string;
++      prompt: string;
++      type: AssetType;
++    };
++
++    await prisma.job.update({
++      where: { id: jobId },
++      data: { status: 'RUNNING' },
++    });
++
++    const result = await runMockProvider(type, prompt);
++
++    const updated = await prisma.job.update({
++      where: { id: jobId },
++      data: { status: 'SUCCEEDED', result },
++    });
++
++    if (updated.projectId) {
++      await prisma.asset.create({
++        data: {
++          type,
++          content: result,
++          projectId: updated.projectId,
++        },
++      });
++    }
++
++    return { result };
++  },
++  { connection: redis }
++);
++
++worker.on('failed', async (job, error) => {
++  if (!job) {
++    return;
++  }
++  await prisma.job.update({
++    where: { id: job.data.jobId },
++    data: { status: 'FAILED', result: error.message },
++  });
++});
++
++console.log('DreamHub worker running');
+-- 
+2.43.0
